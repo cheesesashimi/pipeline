@@ -55,6 +55,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 	errs = errs.Also(validateSteps(mergedSteps).ViaField("steps"))
 	errs = errs.Also(ts.Resources.Validate(ctx).ViaField("resources"))
+	errs = errs.Also(ValidateParameterNames(ts.Params))
 	errs = errs.Also(ValidateParameterTypes(ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ts.Steps, ts.Params))
 	errs = errs.Also(ValidateResourcesVariables(ts.Steps, ts.Resources))
@@ -175,6 +176,11 @@ func validateStep(s Step, names sets.String) (errs *apis.FieldError) {
 			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf(`volumeMount name %q cannot start with "tekton-internal-"`, vm.Name), "name").ViaFieldIndex("volumeMounts", j))
 		}
 	}
+	return errs
+}
+
+func ValidateParameterNames(params []ParamSpec) (errs *apis.FieldError) {
+	_, _, errs = ValidateParamNames(params)
 	return errs
 }
 

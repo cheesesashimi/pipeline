@@ -497,6 +497,27 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"params.task.type", "params.task.default.type"},
 		},
 	}, {
+		name: "duplicated param",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name:        "param-name",
+				Type:        v1beta1.ParamTypeString,
+				Description: "param",
+				Default:     v1beta1.NewArrayOrString("default"),
+			}, {
+				Name:        "param-name",
+				Type:        v1beta1.ParamTypeString,
+				Description: "param",
+				Default:     v1beta1.NewArrayOrString("default"),
+			},
+			},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: "parameter appears more than once",
+			Paths:   []string{"params[param-name]"},
+		},
+	}, {
 		name: "invalid step",
 		fields: fields{
 			Params: []v1beta1.ParamSpec{{

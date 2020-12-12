@@ -225,12 +225,29 @@ func validatePipelineWorkspaces(wss []PipelineWorkspaceDeclaration, pts []Pipeli
 	return errs
 }
 
+// ValidateParamNames validates that parameter names are unique and only occur once
+func ValidateParamNames(params []ParamSpec) (parameterNames, arrayParameterNames sets.String, errs *apis.FieldError) {
+	parameterNames = sets.NewString()
+	arrayParameterNames = sets.NewString()
+
+	for _, p := range params {
+		if parameterNames.Has(p.Name) {
+			errs = errs.Also(apis.ErrGeneric("parameter appears more than once", "").ViaFieldKey("params", p.Name))
+		}
+		// Add parameter name to parameterNames, and to arrayParameterNames if type is array.
+		parameterNames.Insert(p.Name)
+		if p.Type == ParamTypeArray {
+			arrayParameterNames.Insert(p.Name)
+		}
+	}
+
+	return parameterNames, arrayParameterNames, errs
+}
+
 // validatePipelineParameterVariables validates parameters with those specified by each pipeline task,
 // (1) it validates the type of parameter is either string or array (2) parameter default value matches
 // with the type of that param (3) ensures that the referenced param variable is defined is part of the param declarations
 func validatePipelineParameterVariables(tasks []PipelineTask, params []ParamSpec) (errs *apis.FieldError) {
-	parameterNames := sets.NewString()
-	arrayParameterNames := sets.NewString()
 
 	for _, p := range params {
 		// Verify that p is a valid type.
@@ -249,16 +266,11 @@ func validatePipelineParameterVariables(tasks []PipelineTask, params []ParamSpec
 			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("\"%v\" type does not match default value's type: \"%v\"", p.Type, p.Default.Type),
 				"type", "default.type").ViaFieldKey("params", p.Name))
 		}
-
-		if parameterNames.Has(p.Name) {
-			errs = errs.Also(apis.ErrGeneric("parameter appears more than once", "").ViaFieldKey("params", p.Name))
-		}
-		// Add parameter name to parameterNames, and to arrayParameterNames if type is array.
-		parameterNames.Insert(p.Name)
-		if p.Type == ParamTypeArray {
-			arrayParameterNames.Insert(p.Name)
-		}
 	}
+
+	parameterNames, arrayParameterNames, nErrs := ValidateParamNames(params)
+
+	errs = errs.Also(nErrs)
 
 	return errs.Also(validatePipelineParametersVariables(tasks, "params", parameterNames, arrayParameterNames))
 }
